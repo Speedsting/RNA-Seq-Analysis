@@ -105,5 +105,49 @@ intersect(deseq_genes, edgeR_genes)
 intersect(deseq_genes, limma_genes)
 intersect(edgeR_genes, limma_genes)
 
+# Training and testing data w/Machine Learning
+Col_mat = as.matrix(t(v$E)) # x data
+Col_mat = varFilter(v$E, var.func=IQR, var.cutoff=0.95)
+Col_mat = t(Col_mat)
+
+Col_resp = as.factor(v$targets$disease) # y data
+Col_mat = as.matrix(t(v$E))
+Col_resp = as.factor(v$targets$disease)
+
+# Split the data into train and testing sets
+set.seed(42)
+train_data = createDataPartition(Col_resp, p=0.75, list=FALSE)
+
+x_train_data = Col_mat[train_data, ]
+x_test_data = Col_mat[-train_data, ]
+y_train_data = Col_resp[train_data]
+y_test_data = Col_resp[-train_data]
+
+prop.table(table(y_train_data))
+prop.table(table(y_test_data))
+
+res_data = cv.glmnet(
+  x = x_train_data,
+  y = y_train_data,
+  alpha = 0.5,
+  family = "binomial"
+)
+
+y_pred_data = predict(
+  res_data,
+  newx = x_test_data,
+  type = "class",
+  s = "lambda.min"
+)
+confusion_matrix = table(y_pred_data, y_test_data)
+
+print(confusion_matrix)
+print(paste0("Sensitivity: ", sensitivity(confusion_matrix)))
+print(paste0("Specificity: ", specificity(confusion_matrix)))
+print(paste0("Precision: ", precision(onfusion_matrix)))
+print(paste0("kappa: ", kappa(confusion_matrix)))
+print(paste0("negPredValue: ", negPredValue(confusion_matrix)))
+print(paste0("posPredValue: ", posPredValue(confusion_matrix)))
+
 sessionInfo()
 writeLines(capture.output(sessionInfo()), "results/session_info.txt")
